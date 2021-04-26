@@ -1,0 +1,55 @@
+﻿<Window x:Class="Telegram_bot_Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Telegram_bot_Wpf"
+        mc:Ignorable="d"
+        Title="Telegram_bot_Wpf" Height="450" Width="800" Background="#FFBAB7B7" WindowStartupLocation="CenterScreen" Closed="Window_Closed">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="22"/>
+            <RowDefinition/>
+            <RowDefinition Height="136"/>
+        </Grid.RowDefinitions>
+
+        <Menu 
+            Grid.Column="0" 
+            x:Name="menu" 
+            Height="22" 
+            VerticalAlignment="Center">
+            <MenuItem Header="Сохранить">
+                <MenuItem 
+                    x:Name="mJson" 
+                    Header="В Json" 
+                    Click="SaveInJson_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <ListBox Grid.Row="1" Grid.Column="0" x:Name="lbMess" HorizontalAlignment="Left" Height="255" Width="780" Margin="5,5,5,5" BorderBrush="#FFDEE1E8"/>
+
+        <Border Grid.Row="2" BorderThickness="2" HorizontalAlignment="Left" Height="130" Margin="3,0,0,6" VerticalAlignment="Center" Width="781" BorderBrush="#FF474545"/>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30"/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+
+            <Label Grid.Row="0" Grid.Column="0" Width="775" Content="Отправить сообщение" Margin="0,3,0,0" Background="#FF8E8D8D"/>
+            <WrapPanel Grid.Row="1" Grid.Column="0" Width="800" Margin="0,0,0,0">
+                <TextBox Grid.Row="2" Grid.Column="0" x:Name="textBox2" HorizontalAlignment="Center" Height="92" Text="TextBox" TextWrapping="Wrap" VerticalAlignment="Center" Width="600" Margin="7,5,20,0"/>
+                <StackPanel>
+                    <Label Content="Пользователь:" Margin="30,5,0,0"/>
+                    <ComboBox x:Name="lbList" Width="150" Height="25"/>
+                    <Button x:Name="bSend" Content="Отправить" Margin="0,10" Width="150"/>
+                </StackPanel>
+            </WrapPanel>
+        </Grid>
+    </Grid>
+</Window>
