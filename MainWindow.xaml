@@ -6,50 +6,72 @@
         xmlns:local="clr-namespace:Telegram_bot_Wpf"
         mc:Ignorable="d"
         Title="Telegram_bot_Wpf" Height="450" Width="800" Background="#FFBAB7B7" WindowStartupLocation="CenterScreen" Closed="Window_Closed">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="22"/>
-            <RowDefinition/>
-            <RowDefinition Height="136"/>
-        </Grid.RowDefinitions>
-
-        <Menu 
-            Grid.Column="0" 
+    <DockPanel>
+        <Menu DockPanel.Dock="Top"
             x:Name="menu" 
             Height="22" 
             VerticalAlignment="Center">
-            <MenuItem Header="Сохранить">
+            <MenuItem Header="Json">
                 <MenuItem 
-                    x:Name="mJson" 
-                    Header="В Json" 
+                    x:Name="mJsonSave" 
+                    Header="Сохранить" 
                     Click="SaveInJson_Click"/>
+                <MenuItem 
+                    x:Name="mJsonRead" 
+                    Header="Прочитать" 
+                    Click="ReadInJson_Click"/>
             </MenuItem>
+            <MenuItem Header="Просмотр">
+                <MenuItem 
+                    x:Name="mViewDocument" 
+                    Header="Документ" 
+                    Click="ViewDocument_Click"/>
+                <MenuItem 
+                    x:Name="mViewPhoto" 
+                    Header="Фото" 
+                    Click="ViewPhoto_Click"/>
+                <MenuItem 
+                    x:Name="mViewVideo" 
+                    Header="Видео" 
+                    Click="ViewVideo_Click"/>
+                <MenuItem 
+                    x:Name="mViewAudio" 
+                    Header="Аудио" 
+                    Click="ViewAudio_Click"/>
+                <MenuItem 
+                    x:Name="mViewVoice" 
+                    Header="Голос" 
+                    Click="ViewVoice_Click"/>
+            </MenuItem>
+            <MenuItem Header="Выход"                
+                    x:Name="mExit" 
+                    Click="Exit_Click"/>
         </Menu>
 
-        <ListBox Grid.Row="1" Grid.Column="0" x:Name="lbMess" HorizontalAlignment="Left" Height="255" Width="780" Margin="5,5,5,5" BorderBrush="#FFDEE1E8"/>
+        <DockPanel DockPanel.Dock="Bottom">
+            <Label DockPanel.Dock="Top" Content="Отправить сообщение" Margin="7,0,7,0" Background="#FF8E8D8D"/>
+            <StackPanel DockPanel.Dock="Right">
+                <Label Content="Пользователь:" Margin="30,5,0,0"/>
+                <ComboBox x:Name="lbList" Width="150" Height="25" Margin="10,0"/>
+                <Button x:Name="bSend" Content="Отправить" Margin="0,10" Width="150" Click="bSend_Click"/>
+            </StackPanel>
+            <DockPanel>
+                <TextBox x:Name="textMsg" Text="Сообщение" Margin="7,0,0,5"/>
+            </DockPanel>
+        </DockPanel>
 
-        <Border Grid.Row="2" BorderThickness="2" HorizontalAlignment="Left" Height="130" Margin="3,0,0,6" VerticalAlignment="Center" Width="781" BorderBrush="#FF474545"/>
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="30"/>
-                <RowDefinition/>
-            </Grid.RowDefinitions>
-
-            <Label Grid.Row="0" Grid.Column="0" Width="775" Content="Отправить сообщение" Margin="0,3,0,0" Background="#FF8E8D8D"/>
-            <WrapPanel Grid.Row="1" Grid.Column="0" Width="800" Margin="0,0,0,0">
-                <TextBox Grid.Row="2" Grid.Column="0" x:Name="textBox2" HorizontalAlignment="Center" Height="92" Text="TextBox" TextWrapping="Wrap" VerticalAlignment="Center" Width="600" Margin="7,5,20,0"/>
-                <StackPanel>
-                    <Label Content="Пользователь:" Margin="30,5,0,0"/>
-                    <ComboBox x:Name="lbList" Width="150" Height="25"/>
-                    <Button x:Name="bSend" Content="Отправить" Margin="0,10" Width="150"/>
-                </StackPanel>
-            </WrapPanel>
-        </Grid>
-    </Grid>
+        <ListBox x:Name="lbMess" Margin="5,5,5,5" BorderBrush="#FFDEE1E8" SelectionChanged="lbMess_SelectionChanged">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Path = dt}"/>
+                        <TextBlock Text="{Binding Path = firstName}"/>
+                        <TextBlock Text="{Binding Path = id}"/>
+                        <TextBlock Text="{Binding Path = text}"/>
+                        <TextBlock Text="{Binding Path = type}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
 </Window>

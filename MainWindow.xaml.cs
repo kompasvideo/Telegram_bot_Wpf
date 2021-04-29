@@ -12,6 +12,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.IO;
+using System.Collections.ObjectModel;
 using Newtonsoft.Json.Linq;
 using Telegram.Bot;
 using Telegram.Bot.Args;
@@ -20,9 +22,10 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
-using System.IO;
+using Telegram_bot_Wpf.View;
 using Path = System.IO.Path;
-using System.Collections.ObjectModel;
+using System.Runtime.Serialization.Formatters.Binary;
+using Newtonsoft.Json;
 
 namespace Telegram_bot_Wpf
 {
@@ -31,17 +34,20 @@ namespace Telegram_bot_Wpf
     /// </summary>
     public partial class MainWindow : Window
     {
-        static TelegramBotClient bot;
-        static string path;
-        static int poz;
-        static List<TypeMessage> d_audioPhoto;
-        static Dictionary<int, TypeMessage> d_files;
-        static string token;
-        static int photo = 0;
-        static int audio = 0;
-        static int voice = 0;
-        static int video = 0;
-        static ObservableCollection<string> listMessages { get; set; }
+        TelegramBotClient bot;
+        string path;
+        string userPath;
+        int poz;
+        Dictionary<int, TypeMessage> d_files;
+        string token;
+        int photo = 0;
+        int audio = 0;
+        int voice = 0;
+        int video = 0;
+        // хранит список id пользователей
+        ObservableCollection<string> listUsers { get; set; }
+        // хранит сообщения от пользователей
+        public ObservableCollection<Messages> lMessages { get; set; }
 
         public MainWindow()
         {
@@ -54,7 +60,6 @@ namespace Telegram_bot_Wpf
             token = Token.token;
             path = Directory.GetCurrentDirectory();
             d_files = new Dictionary<int, TypeMessage>();
-            d_audioPhoto = new List<TypeMessage>();
             poz = 0;
             bot = new TelegramBotClient(token);
             bot.OnMessage += MessageListener;
@@ -62,10 +67,10 @@ namespace Telegram_bot_Wpf
             bot.OnCallbackQuery += BotOnCallbackQueryReceived;
             bot.OnReceiveError += BotOnReceiveError;
             bot.StartReceiving(Array.Empty<UpdateType>());
-            listMessages = new ObservableCollection<string>();
-            lbMess.ItemsSource = listMessages;
-            //Console.ReadLine();            
-            //bot.StopReceiving();
+            listUsers = new ObservableCollection<string>();
+            lMessages = new ObservableCollection<Messages>();
+            lbMess.ItemsSource = lMessages;
+            lbList.ItemsSource = listUsers;
         }
 
         /// <summary>
@@ -73,7 +78,7 @@ namespace Telegram_bot_Wpf
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private static async void MessageListener(object sender, MessageEventArgs e)
+        private async void MessageListener(object sender, MessageEventArgs e)
         {
             var message = e.Message;
             SaveToList(e);
@@ -123,31 +128,30 @@ namespace Telegram_bot_Wpf
         /// </summary>
         /// <param name="userId"></param>
         /// <returns>Возвращяет текую директорию типа string</returns>
-        static string SetDirectory(int userId)
+        string SetDirectory(int userId)
         {
-            string l_path = path + "\\" + userId.ToString();
-            if (!Directory.Exists(l_path))
+            userPath = path + "\\" + userId.ToString();
+            if (!Directory.Exists(userPath))
             {
-                Directory.CreateDirectory(l_path);
+                Directory.CreateDirectory(userPath);
             }
-            Directory.SetCurrentDirectory(l_path);
-            return l_path;
+            Directory.SetCurrentDirectory(userPath);
+            
+            return userPath;
         }
 
         /// <summary>
         /// Сохраняет фото и аудио в список, документы в папку
         /// </summary>
         /// <param name="e"></param>
-        private static void SaveToList(MessageEventArgs e)
+        private void SaveToList(MessageEventArgs e)
         {
             string text = $"{DateTime.Now.ToLongTimeString()}: {e.Message.Chat.FirstName} {e.Message.Chat.Id} {e.Message.Text}";
             SetDirectory(e.Message.From.Id);
             //Console.WriteLine($"{text} TypeMessage: {e.Message.Type}");
-            Dispatcher.BeginInvoke(delegate
-            {
-                тут я свободно меняю ListBox
-                });
-            listMessages.Add($"{text} TypeMessage: {e.Message.Type}");
+            //Dispatcher.BeginInvoke( new Action(() => listMessages.Add($"{text} TypeMessage: {e.Message.Type}")));
+            Dispatcher.BeginInvoke(new Action(() => lMessages.Add(new Messages(DateTime.Now, e.Message.Chat.FirstName, e.Message.Chat.Id, e.Message.Text, e.Message.Type))));
+
             TypeMessage fileName = new TypeMessage();
             switch (e.Message.Type)
             {
@@ -162,8 +166,6 @@ namespace Telegram_bot_Wpf
                     fileName.type = Type.Photo;
                     PhotoSize[] photoSizes = e.Message.Photo;
                     fileName.fileName = photoSizes[0].FileId;
-                    d_audioPhoto.Add(fileName);
-                    //Console.WriteLine(photoSizes[0].FileId);
                     DownLoad(photoSizes[0].FileId, "photo_" + photo.ToString());
                     photo++;
                     break;
@@ -171,24 +173,18 @@ namespace Telegram_bot_Wpf
                 case MessageType.Audio:
                     fileName.type = Type.Audio;
                     fileName.fileName = e.Message.Audio.FileId;
-                    d_audioPhoto.Add(fileName);
-                    //Console.WriteLine(e.Message.Audio.FileId);
                     DownLoad(e.Message.Audio.FileId, "audio_" + audio.ToString());
                     audio++;
                     break;
                 case MessageType.Voice:
                     fileName.type = Type.Voice;
                     fileName.fileName = e.Message.Voice.FileId;
-                    d_audioPhoto.Add(fileName);
-                    //Console.WriteLine(e.Message.Voice.FileId);
                     DownLoad(e.Message.Voice.FileId, "voice_" + voice.ToString());
                     voice++;
                     break;
                 case MessageType.Video:
                     fileName.type = Type.Video;
                     fileName.fileName = e.Message.Video.FileId;
-                    d_audioPhoto.Add(fileName);
-                    //Console.WriteLine(e.Message.Video.FileId);
                     DownLoad(e.Message.Video.FileId, "video_" + video.ToString());
                     video++;
                     break;
@@ -199,7 +195,7 @@ namespace Telegram_bot_Wpf
         /// Обработка сообщений по умолчания (всё кроме команд /start /help /list)
         /// </summary>
         /// <param name="e"></param>
-        private static async void MessageDefault(MessageEventArgs e)
+        private async void MessageDefault(MessageEventArgs e)
         {
             string str_load = e.Message.Text.Substring(0, 1);
             if (str_load == "/")
@@ -263,7 +259,7 @@ namespace Telegram_bot_Wpf
         /// </summary>
         /// <param name="fileId"></param>
         /// <param name="path"></param>
-        static async void DownLoad(string fileId, string path)
+        async void DownLoad(string fileId, string path)
         {
             var file = await bot.GetFileAsync(fileId);
             FileStream fs = new FileStream(path, FileMode.Create);
@@ -277,7 +273,7 @@ namespace Telegram_bot_Wpf
         /// </summary>
         /// <param name="path"></param>
         /// <returns>Возвращяет список документов, аудио, фото и т.д типа string</returns>
-        static string GetFiles(string path)
+        string GetFiles(string path)
         {
             poz = 0;
             string str_return = "";
@@ -327,7 +323,7 @@ namespace Telegram_bot_Wpf
         /// <param name="message"></param>
         /// <param name="filePath"></param>
         /// <returns></returns>
-        static async Task SendDocument(Message message, string filePath)
+        async Task SendDocument(Message message, string filePath)
         {
             await bot.SendChatActionAsync(message.Chat.Id, ChatAction.UploadPhoto);
             var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -344,7 +340,7 @@ namespace Telegram_bot_Wpf
         /// <param name="message"></param>
         /// <param name="filePath"></param>
         /// <returns></returns>
-        static async Task SendPhoto(Message message, string filePath)
+        async Task SendPhoto(Message message, string filePath)
         {
             await bot.SendChatActionAsync(message.Chat.Id, ChatAction.UploadPhoto);
             var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -361,7 +357,7 @@ namespace Telegram_bot_Wpf
         /// <param name="message"></param>
         /// <param name="filePath"></param>
         /// <returns></returns>
-        static async Task SendAudioMy(Message message, string filePath)
+        async Task SendAudioMy(Message message, string filePath)
         {
             await bot.SendChatActionAsync(message.Chat.Id, ChatAction.UploadPhoto);
             var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -378,7 +374,7 @@ namespace Telegram_bot_Wpf
         /// <param name="message"></param>
         /// <param name="filePath"></param>
         /// <returns></returns>
-        static async Task SendVoice(Message message, string filePath)
+        async Task SendVoice(Message message, string filePath)
         {
             await bot.SendChatActionAsync(message.Chat.Id, ChatAction.UploadPhoto);
             var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -395,7 +391,7 @@ namespace Telegram_bot_Wpf
         /// <param name="message"></param>
         /// <param name="filePath"></param>
         /// <returns></returns>
-        static async Task SendVideo(Message message, string filePath)
+        async Task SendVideo(Message message, string filePath)
         {
             await bot.SendChatActionAsync(message.Chat.Id, ChatAction.UploadPhoto);
             var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -407,7 +403,7 @@ namespace Telegram_bot_Wpf
             );
         }
 
-        private static async void BotOnCallbackQueryReceived(object sender, CallbackQueryEventArgs callbackQueryEventArgs)
+        private async void BotOnCallbackQueryReceived(object sender, CallbackQueryEventArgs callbackQueryEventArgs)
         {
             var callbackQuery = callbackQueryEventArgs.CallbackQuery;
 
@@ -422,7 +418,7 @@ namespace Telegram_bot_Wpf
             );
         }
 
-        private static void BotOnReceiveError(object sender, ReceiveErrorEventArgs receiveErrorEventArgs)
+        private void BotOnReceiveError(object sender, ReceiveErrorEventArgs receiveErrorEventArgs)
         {
             //Console.WriteLine("Received error: {0} — {1}",
             //    receiveErrorEventArgs.ApiRequestException.ErrorCode,
@@ -434,14 +430,156 @@ namespace Telegram_bot_Wpf
             );
             MessageBox.Show(str);
         }    
-        private void SaveInJson_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
+        
+        /// <summary>
+        /// Закрытие окна программы
+        /// </summary>
+        /// <param name="sender">Параметр типа object</param>
+        /// <param name="e">Параметр типа EventArgs</param>
         private void Window_Closed(object sender, EventArgs e)
         {
             bot.StopReceiving();
+        }
+
+        /// <summary>
+        /// Выбор элемента в списке сообщений
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void lbMess_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ListBox list = e.Source as ListBox;
+            Messages str = list.SelectedItem as Messages;
+            if (str != null) listUsers.Add(str.id.ToString());
+            lbList.SelectedIndex = lbList.Items.IndexOf(str.id.ToString());
+            userPath = path + "\\" + str.id.ToString();
+        }
+
+        /// <summary>
+        /// Отправить сообщение
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void bSend_Click(object sender, RoutedEventArgs e)
+        {
+            string messageText = textMsg.Text;
+            string str = lbList.SelectedItem as string;
+            if (str != null)
+            {
+                long id; 
+                bool b= long.TryParse(str, out id);
+                if (b) await bot.SendTextMessageAsync(id, $"{messageText}");
+            }
+        }
+
+        /// <summary>
+        /// Выбран пункт меню "Выход"
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        /// <summary>
+        /// Выбран пункт меню "Просмотр -> Документ"
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ViewDocument_Click(object sender, RoutedEventArgs e)
+        {
+            if (userPath != null)
+            {
+                GetFiles(userPath);
+                ViewDocument viewDocument = new ViewDocument(userPath);
+                viewDocument.ShowDialog();
+            }
+        }
+        /// <summary>
+        /// Выбран пункт меню "Просмотр -> Фото"
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ViewPhoto_Click(object sender, RoutedEventArgs e)
+        {
+            if (userPath != null)
+            {
+                GetFiles(userPath);
+                ViewPhoto viewPhoto = new ViewPhoto(userPath);
+                viewPhoto.ShowDialog();
+            }
+        }
+        /// <summary>
+        /// Выбран пункт меню "Просмотр -> Видео"
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ViewVideo_Click(object sender, RoutedEventArgs e)
+        {
+            if (userPath != null)
+            {
+                GetFiles(userPath);
+                ViewVideo viewVideo = new ViewVideo(userPath);
+                viewVideo.ShowDialog();
+            }
+        }
+        /// <summary>
+        /// Выбран пункт меню "Просмотр -> Аудио"
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ViewAudio_Click(object sender, RoutedEventArgs e)
+        {
+            if (userPath != null)
+            {
+                GetFiles(userPath);
+                ViewAudio viewAudio = new ViewAudio(userPath);
+                viewAudio.ShowDialog();
+            }
+        }
+        /// <summary>
+        /// Выбран пункт меню "Просмотр -> Голос"
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ViewVoice_Click(object sender, RoutedEventArgs e)
+        {
+            if (userPath != null)
+            {
+                GetFiles(userPath);
+                ViewVoice viewVoice = new ViewVoice(userPath);
+                viewVoice.ShowDialog();
+            }
+
+        }
+        
+        /// <summary>
+        /// Сохранить сообщения в Json
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void SaveInJson_Click(object sender, RoutedEventArgs e)
+        {
+            string fileName = Path.Combine(path, "Messages.json");            
+            string json = JsonConvert.SerializeObject(lMessages);
+            System.IO.File.WriteAllText(fileName, json);
+        }
+        /// <summary>
+        /// Прочитать сообщения из Json
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ReadInJson_Click(object sender, RoutedEventArgs e)
+        {
+            string fileName = Path.Combine(path, "Messages.json");
+            string json = System.IO.File.ReadAllText(fileName);
+            ObservableCollection<Messages> l_Messages = new ObservableCollection<Messages>();
+            l_Messages = JsonConvert.DeserializeObject<ObservableCollection<Messages>>(json);
+            foreach(var mes in l_Messages)
+            {
+                lMessages.Add(mes);
+            }
         }
     }
 }
